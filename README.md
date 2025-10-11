@@ -1,68 +1,152 @@
+Dưới đây là file `README.md` viết bằng Markdown, mô tả đầy đủ cấu trúc project Django mà bạn đưa — chuyên nghiệp, rõ ràng, copy-paste dùng ngay 👇
 
 ---
 
-## ⚡ Chi tiết các folder quan trọng
+```markdown
+# 🧠 CareerMate — AI Career Assistant Platform
 
-### 1. `agent/config/`
-Chứa các cấu hình kết nối và client:
-- `weaviate_config.py`: Khởi tạo client, URL, schema cho Weaviate.  
-- `embedding_config.py`: Khởi tạo model embedding, API key
-
-### 2. `agent/agents/`
-Mỗi file tương ứng một **agent độc lập**:
-- **roadmap_agent**: Tạo roadmap học tập dựa trên kỹ năng hiện có & target role.  
-- **recommendation_agent**: Truy xuất và gợi ý job dựa trên CV hoặc skills.  
-- **cv_creation_agent**: Xử lý CV, normalize skills, tạo JSON chuẩn.
-
-### 3. `agent/chains/`
-Chain liên kết **prompt, LLM, tool** thành pipeline logic:
-- Ví dụ: roadmap_chain gọi roadmap_agent → prompt → internal/external tools → output JSON.
-
-### 4. `agent/tools/`
-- `internal/`: Tools gọi Weaviate, database, hoặc các chức năng nội bộ.  
-- `external/`: Tools gọi API bên ngoài (Wikipedia, TMDB, weather, v.v.).
-- Các tool nên được wrapper trong internal/external để agent chỉ cần gọi agent.run() mà không biết chi tiết implementation.
-
-### 5. `agent/prompts/`
-Chứa các prompt template để agent biết cách format input/output và tạo JSON chuẩn.
-
-### 6. `agent/utils/`
-Các hàm helper: logging, parse JSON, validate data, handle errors, v.v.
-
-### 7. `agent/llm/`
-Wrapper cho các LLM:
-- Khởi tạo LLM, setting temperature, max token.
-- Mỗi agent có thể import cùng một LLM fine-tuned.
-
-### 8. `agent/data/`
-- Chứa embeddings, dataset để fine-tune, hoặc ví dụ input/output JSON.  
-- Phục vụ agent cho training hoặc thử nghiệm local.
-- Data và embeddings không commit trực tiếp vào Git nếu có PII hoặc dataset lớn.
-
-### 9. `mypermit/`
-- Client Permit.io để kiểm soát quyền hạn agent/user.  
-- Bảo vệ agent khỏi việc thao tác dữ liệu ngoài quyền.
-
-### 10. `apps/api/`
-- Django REST API: nhận request từ spring boot, gọi agent và trả kết quả.  
-- `views.py` + `urls.py` định tuyến endpoints.
+**CareerMate** là nền tảng hỗ trợ định hướng nghề nghiệp sử dụng AI, tích hợp các agent xử lý lộ trình, gợi ý kỹ năng và tạo CV tự động.  
+Dự án được xây dựng trên **Django REST Framework**, **Weaviate**, và **LLM** (Large Language Models).
 
 ---
 
-## ⚡ Hướng dẫn nhanh dev
+## 🏗 Cấu trúc dự án
 
-1. **Cài đặt môi trường**
-```bash
-1. 
-uv venv --python 3.12 (đã có thì không cần chạy)
-source .venv/bin/activate
+```
+
+Careermate/
+├── manage.py
+├── requirements.txt          # Danh sách package cần cài
+├── .env                      # Biến môi trường (DATABASE_URL, SECRET_KEY, v.v.)
+├── compose.yaml              # Docker Compose: khởi chạy Django, DB, Weaviate, v.v.
+│
+├── careermate/               # Cấu hình chính của project Django
+│   ├── **init**.py
+│   ├── settings.py           # Cấu hình Django, database, REST Framework, CORS, v.v.
+│   ├── urls.py               # Định nghĩa URL gốc, include các app con
+│   ├── wsgi.py               # Entry point cho server WSGI
+│   ├── asgi.py               # Entry point cho ASGI (nếu dùng async)
+│   ├── authentication.py     # Xử lý xác thực JWT hoặc internal key
+│   └── home/
+│       ├── **init**.py
+│       └── swagger.py        # Cấu hình Swagger UI (drf-yasg)
+│
+├── agent_core/               # Lớp lõi chia sẻ cho các agent
+│   ├── **init**.py
+│   ├── weaviate.py           # Kết nối, cấu hình client Weaviate
+│   ├── embedding.py          # Tạo vector embedding
+│   ├── llm.py                # Tích hợp model ngôn ngữ (OpenAI, Ollama, v.v.)
+│   ├── data/                 # Chứa dữ liệu mẫu hoặc vector
+│   ├── prompt/               # Prompt template cho các agent
+│   ├── utils/                # Hàm tiện ích chung
+│   └── tools/                # Bộ công cụ dùng chung giữa các agent
+│       └── **init**.py
+│
+└── apps/
+├── roadmap_agent/         # Agent 1: Phân tích và gợi ý lộ trình nghề nghiệp
+│   ├── **init**.py
+│   ├── apps.py
+│   ├── serializers.py     # Định nghĩa schema REST API
+│   ├── services/          # Business logic, AI pipeline
+│   │   ├── **init**.py
+│   │   └── roadmap_generator.py
+│   ├── tests.py
+│   ├── views.py           # REST endpoints
+│   └── urls.py
+│
+├── recommendation_agent/  # Agent 2: Gợi ý kỹ năng, công việc phù hợp
+│   └── (cấu trúc tương tự)
+│
+└── cv_creation_agent/     # Agent 3: Tạo CV từ dữ liệu người dùng
+└── (cấu trúc tương tự)
+
+````
+
+---
+
+## ⚙️ Cài đặt & Chạy dự án
+
+### 1️. Tạo môi trường ảo bằng uv và python 3.12
+uv venv --python 3.12
+
+### 2. Cài đặt thư viện
 uv pip install -r requirements.txt
 
-2. Chạy Weaviate local
+### 3. Thêm biến môi trường vào file `.env`
 
-docker compose up -d
-
-3. Chạy Django server
-
-python manage.py migrate
+### 4. Chạy project
 python manage.py runserver
+````
+
+Dùng Docker Compose để chạy weaviate locally:
+
+```bash
+docker compose up -d
+```
+
+---
+
+### 2️⃣ Tạo file `.env`
+
+Ví dụ:
+
+```
+Đã gửi
+```
+
+---
+
+Swagger UI: [http://localhost:8000/swagger/](http://localhost:8000/swagger/)
+
+---
+
+## 🔐 Xác thực
+
+CareerMate hỗ trợ:
+
+* **JWT Bearer Token** (Spring Boot cấp phát)
+
+---
+
+## 🧩 Thành phần chính
+
+| Thành phần                    | Mô tả                                  |
+|-------------------------------| -------------------------------------- |
+| **Django REST Framework**     | Xây dựng API chính                     |
+| **Weaviate**                  | Lưu trữ & tìm kiếm vector embedding    |
+| **LLM (Hugging Face/Ollama)** | Sinh nội dung và phân tích nghề nghiệp |
+| **Swagger (drf-yasg)**        | UI cho việc test và tài liệu API       |
+| **Docker Compose**            | Chạy các service cục bộ                |
+
+---
+
+## 📦 Các Agent
+
+| Agent                  | Mục đích                                 | Ví dụ                                      |
+| ---------------------- | ---------------------------------------- | ------------------------------------------ |
+| `roadmap_agent`        | Xây dựng lộ trình phát triển nghề nghiệp | Gợi ý học gì để trở thành Backend Engineer |
+| `recommendation_agent` | Gợi ý kỹ năng / công việc                | Đề xuất công việc phù hợp với hồ sơ        |
+| `cv_creation_agent`    | Sinh CV tự động                          | Tạo file CV hoàn chỉnh từ input người dùng |
+
+---
+
+## 🧠 Core Layer (`agent_core/`)
+
+Lưu trữ các thành phần **AI dùng chung**:
+
+* `embedding.py`: sinh vector từ text.
+* `llm.py`: gọi LLM sinh phản hồi.
+* `weaviate.py`: lưu và truy vấn vector.
+* `prompt/`: template gợi ý cho từng agent.
+
+---
+
+## 📘 License
+
+FPT University License © 2025 CareerMate Team
+
+---
+
+## ✨ Liên hệ
+
+Nếu bạn muốn đóng góp hoặc mở rộng tính năng, hãy mở issue hoặc pull request.

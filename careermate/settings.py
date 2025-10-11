@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
 
-INTERNAL_SECRET_KEY = os.environ["INTERNAL_SECRET_KEY"]
+SPRING_BOOT_JWT_SECRET = os.environ["SPRING_BOOT_JWT_SECRET"]
 
 SECRET_KEY = 'django-insecure-your-secret-key'
 DEBUG = True
@@ -26,6 +26,12 @@ INSTALLED_APPS = [
     'apps.recommendation_agent',
     'apps.cv_creation_agent',
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "careermate.authentication.BearerAuthentication",
+    ]
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

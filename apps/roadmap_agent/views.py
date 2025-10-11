@@ -1,13 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-
-from careermate.middleware import verify_internal_request
+from rest_framework.permissions import IsAuthenticated
 
 
 class TestView(APIView):
-    @verify_internal_request
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         return Response({
-            "message": "Request accepted from Spring Boot",
-            "method": request.method,
+            "message": "Token valid",
+            "user": str(request.user)
         })
