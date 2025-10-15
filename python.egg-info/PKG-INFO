@@ -1,0 +1,309 @@
+Metadata-Version: 2.4
+Name: python
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: <3.14,>=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: annotated-types
+Requires-Dist: anyio
+Requires-Dist: asgiref
+Requires-Dist: authlib
+Requires-Dist: blis
+Requires-Dist: cachetools
+Requires-Dist: catalogue
+Requires-Dist: certifi
+Requires-Dist: cffi
+Requires-Dist: charset-normalizer
+Requires-Dist: click
+Requires-Dist: cloudpathlib
+Requires-Dist: colorama
+Requires-Dist: confection
+Requires-Dist: cryptography
+Requires-Dist: cymem
+Requires-Dist: deprecation
+Requires-Dist: distro
+Requires-Dist: django
+Requires-Dist: djangorestframework
+Requires-Dist: drf-yasg
+Requires-Dist: filelock
+Requires-Dist: filetype
+Requires-Dist: fsspec
+Requires-Dist: h11
+Requires-Dist: httpcore
+Requires-Dist: httplib2
+Requires-Dist: httpx
+Requires-Dist: huggingface-hub
+Requires-Dist: idna
+Requires-Dist: inflection
+Requires-Dist: iniconfig
+Requires-Dist: jinja2
+Requires-Dist: jiter
+Requires-Dist: joblib
+Requires-Dist: jsonpatch
+Requires-Dist: jsonpointer
+Requires-Dist: langchain
+Requires-Dist: langchain-core
+Requires-Dist: langchain-openai
+Requires-Dist: langchain-text-splitters
+Requires-Dist: langchain-weaviate
+Requires-Dist: langcodes
+Requires-Dist: langsmith
+Requires-Dist: language-data
+Requires-Dist: lightning-utilities
+Requires-Dist: marisa-trie
+Requires-Dist: markdown-it-py
+Requires-Dist: markupsafe
+Requires-Dist: mdurl
+Requires-Dist: mpmath
+Requires-Dist: murmurhash
+Requires-Dist: mypy-extensions
+Requires-Dist: networkx
+Requires-Dist: nltk
+Requires-Dist: numpy
+Requires-Dist: openai
+Requires-Dist: orjson
+Requires-Dist: packaging
+Requires-Dist: pandas
+Requires-Dist: pathspec
+Requires-Dist: pillow
+Requires-Dist: platformdirs
+Requires-Dist: pluggy
+Requires-Dist: preshed
+Requires-Dist: pycparser
+Requires-Dist: pydantic
+Requires-Dist: pydantic-core
+Requires-Dist: pygments
+Requires-Dist: pyjwt
+Requires-Dist: pyparsing
+Requires-Dist: python-dateutil
+Requires-Dist: python-dotenv
+Requires-Dist: pytokens
+Requires-Dist: pytz
+Requires-Dist: pyyaml
+Requires-Dist: regex
+Requires-Dist: requests
+Requires-Dist: requests-toolbelt
+Requires-Dist: rich
+Requires-Dist: safetensors
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
+Requires-Dist: sentence-transformers
+Requires-Dist: shellingham
+Requires-Dist: simsimd
+Requires-Dist: six
+Requires-Dist: smart-open
+Requires-Dist: sniffio
+Requires-Dist: spacy
+Requires-Dist: spacy-legacy
+Requires-Dist: spacy-loggers
+Requires-Dist: sqlalchemy
+Requires-Dist: sqlparse
+Requires-Dist: srsly
+Requires-Dist: sympy
+Requires-Dist: tenacity
+Requires-Dist: textblob
+Requires-Dist: thinc
+Requires-Dist: threadpoolctl
+Requires-Dist: tiktoken
+Requires-Dist: tokenizers
+Requires-Dist: torchmetrics
+Requires-Dist: tqdm
+Requires-Dist: transformers
+Requires-Dist: typer
+Requires-Dist: typing-extensions
+Requires-Dist: typing-inspection
+Requires-Dist: tzdata
+Requires-Dist: urllib3
+Requires-Dist: validators
+Requires-Dist: wasabi
+Requires-Dist: weasel
+Requires-Dist: weaviate-client
+Requires-Dist: wrapt
+Requires-Dist: zstandard
+Requires-Dist: torch
+Requires-Dist: torchvision
+Requires-Dist: torchaudio
+Requires-Dist: jupyter
+Requires-Dist: notebook
+Requires-Dist: datasets>=2.20.0
+Requires-Dist: peft>=0.17.1
+Requires-Dist: sentencepiece>=0.2.1
+Requires-Dist: trl==0.8.6
+Requires-Dist: accelerate>=0.33
+Requires-Dist: langchain-google-genai>=2.0.10
+Requires-Dist: google-genai>=1.43.0
+Requires-Dist: drf-spectacular>=0.28.0
+Requires-Dist: drf-spectacular-sidecar>=2025.10.1
+Provides-Extra: dev
+Requires-Dist: black; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Provides-Extra: train
+Requires-Dist: unsloth>=2024.8; platform_system != "Windows" and extra == "train"
+Provides-Extra: gemini
+Requires-Dist: langchain-google-genai; extra == "gemini"
+Requires-Dist: google-generativeai; extra == "gemini"
+Provides-Extra: google
+Requires-Dist: google-api-python-client; extra == "google"
+Requires-Dist: google-auth; extra == "google"
+Requires-Dist: google-auth-httplib2; extra == "google"
+Requires-Dist: google-api-core; extra == "google"
+Requires-Dist: googleapis-common-protos; extra == "google"
+Requires-Dist: grpcio; extra == "google"
+Requires-Dist: grpcio-status; extra == "google"
+Requires-Dist: proto-plus; extra == "google"
+Requires-Dist: protobuf; extra == "google"
+Requires-Dist: uritemplate; extra == "google"
+
+Dưới đây là file `README.md` viết bằng Markdown, mô tả đầy đủ cấu trúc project Django mà bạn đưa — chuyên nghiệp, rõ ràng, copy-paste dùng ngay 👇
+
+---
+
+```markdown
+# 🧠 CareerMate — AI Career Assistant Platform
+
+**CareerMate** là nền tảng hỗ trợ định hướng nghề nghiệp sử dụng AI, tích hợp các agent xử lý lộ trình, gợi ý kỹ năng và tạo CV tự động.  
+Dự án được xây dựng trên **Django REST Framework**, **Weaviate**, và **LLM** (Large Language Models).
+
+---
+
+## 🏗 Cấu trúc dự án
+
+```
+
+Careermate/
+├── manage.py
+├── requirements.txt          # Danh sách package cần cài
+├── .env                      # Biến môi trường (DATABASE_URL, SECRET_KEY, v.v.)
+├── compose.yaml              # Docker Compose: khởi chạy Django, DB, Weaviate, v.v.
+│
+├── careermate/               # Cấu hình chính của project Django
+│   ├── **init**.py
+│   ├── settings.py           # Cấu hình Django, database, REST Framework, CORS, v.v.
+│   ├── urls.py               # Định nghĩa URL gốc, include các app con
+│   ├── wsgi.py               # Entry point cho server WSGI
+│   ├── asgi.py               # Entry point cho ASGI (nếu dùng async)
+│   ├── authentication.py     # Xử lý xác thực JWT hoặc internal key
+│   └── home/
+│       ├── **init**.py
+│       └── swagger.py        # Cấu hình Swagger UI (drf-yasg)
+│
+├── agent_core/               # Lớp lõi chia sẻ cho các agent
+│   ├── **init**.py
+│   ├── weaviate.py           # Kết nối, cấu hình client Weaviate
+│   ├── embedding.py          # Tạo vector embedding
+│   ├── llm.py                # Tích hợp model ngôn ngữ (OpenAI, Ollama, v.v.)
+│   ├── data/                 # Chứa dữ liệu mẫu hoặc vector
+│   ├── prompt/               # Prompt template cho các agent
+│   ├── utils/                # Hàm tiện ích chung
+│   └── tools/                # Bộ công cụ dùng chung giữa các agent
+│       └── **init**.py
+│
+└── apps/
+├── roadmap_agent/         # Agent 1: Phân tích và gợi ý lộ trình nghề nghiệp
+│   ├── **init**.py
+│   ├── apps.py
+│   ├── serializers.py     # Định nghĩa schema REST API
+│   ├── services/          # Business logic, AI pipeline
+│   │   ├── **init**.py
+│   │   └── roadmap_generator.py
+│   ├── tests.py
+│   ├── views.py           # REST endpoints
+│   └── urls.py
+│
+├── recommendation_agent/  # Agent 2: Gợi ý kỹ năng, công việc phù hợp
+│   └── (cấu trúc tương tự)
+│
+└── cv_creation_agent/     # Agent 3: Tạo CV từ dữ liệu người dùng
+└── (cấu trúc tương tự)
+
+````
+
+---
+
+## ⚙️ Cài đặt & Chạy dự án
+
+### 1️. Tạo môi trường ảo bằng uv và python 3.12
+uv venv --python 3.12
+
+### 2. Cài đặt thư viện
+uv pip install -r requirements.txt
+
+### 3. Thêm biến môi trường vào file `.env`
+
+### 4. Chạy project
+python manage.py runserver
+````
+
+Dùng Docker Compose để chạy weaviate locally:
+
+```bash
+docker compose up -d
+```
+
+---
+
+### 2️⃣ Tạo file `.env`
+
+Ví dụ:
+
+```
+Đã gửi
+```
+
+---
+
+Swagger UI: [http://localhost:8000/swagger/](http://localhost:8000/swagger/)
+
+---
+
+## 🔐 Xác thực
+
+CareerMate hỗ trợ:
+
+* **JWT Bearer Token** (Spring Boot cấp phát)
+
+---
+
+## 🧩 Thành phần chính
+
+| Thành phần                    | Mô tả                                  |
+|-------------------------------| -------------------------------------- |
+| **Django REST Framework**     | Xây dựng API chính                     |
+| **Weaviate**                  | Lưu trữ & tìm kiếm vector embedding    |
+| **LLM (Hugging Face/Ollama)** | Sinh nội dung và phân tích nghề nghiệp |
+| **Swagger (drf-yasg)**        | UI cho việc test và tài liệu API       |
+| **Docker Compose**            | Chạy các service cục bộ                |
+
+---
+
+## 📦 Các Agent
+
+| Agent                  | Mục đích                                 | Ví dụ                                      |
+| ---------------------- | ---------------------------------------- | ------------------------------------------ |
+| `roadmap_agent`        | Xây dựng lộ trình phát triển nghề nghiệp | Gợi ý học gì để trở thành Backend Engineer |
+| `recommendation_agent` | Gợi ý kỹ năng / công việc                | Đề xuất công việc phù hợp với hồ sơ        |
+| `cv_creation_agent`    | Sinh CV tự động                          | Tạo file CV hoàn chỉnh từ input người dùng |
+
+---
+
+## 🧠 Core Layer (`agent_core/`)
+
+Lưu trữ các thành phần **AI dùng chung**:
+
+* `embedding.py`: sinh vector từ text.
+* `llm.py`: gọi LLM sinh phản hồi.
+* `weaviate.py`: lưu và truy vấn vector.
+* `prompt/`: template gợi ý cho từng agent.
+
+---
+
+## 📘 License
+
+FPT University License © 2025 CareerMate Team
+
+---
+
+## ✨ Liên hệ
+
+Nếu bạn muốn đóng góp hoặc mở rộng tính năng, hãy mở issue hoặc pull request.

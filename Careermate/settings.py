@@ -21,16 +21,31 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_yasg',
+    'drf_spectacular',
     # Add your app
     'apps.roadmap_agent',
     'apps.recommendation_agent',
     'apps.cv_creation_agent',
+    'apps.swagger.apps.SwaggerConfig',
 ]
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "careermate.authentication.BearerAuthentication",
-    ]
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'apps.swagger.authentication.BearerAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Require authentication by default
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Careermate API',
+    'DESCRIPTION': 'API documentation with Swagger UI',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [{'bearerAuth': []}],
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 MIDDLEWARE = [
@@ -43,7 +58,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'careermate.urls'
+ROOT_URLCONF = 'Careermate.urls'
 
 TEMPLATES = [
     {
@@ -61,7 +76,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'careermate.wsgi.application'
+WSGI_APPLICATION = 'Careermate.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -79,14 +94,3 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-        }
-    },
-    'USE_SESSION_AUTH': False,
-}
