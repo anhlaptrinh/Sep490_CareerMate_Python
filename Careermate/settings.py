@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'apps.roadmap_agent',
     'apps.recommendation_agent',
     'apps.cv_creation_agent',
+    'apps.cv_analysis_agent',
     'apps.swagger.apps.SwaggerConfig',
 ]
 
@@ -58,7 +59,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'Careermate.urls'
+ROOT_URLCONF = 'careermate.urls'
 
 TEMPLATES = [
     {
@@ -76,7 +77,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'Careermate.wsgi.application'
+WSGI_APPLICATION = 'careermate.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -94,3 +95,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery Configuration
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = os.environ["CELERY_TASK_TIME_LIMIT"]  # 30 minutes
