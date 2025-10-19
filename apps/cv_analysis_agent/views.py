@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 
-from careermate import celery_app
+from Careermate import celery_app
 from .services.analyzer_service import analyze_resume_sync
 from .serializers import ResumeUploadSerializer
 from .task import process_resume_task

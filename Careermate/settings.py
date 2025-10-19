@@ -20,7 +20,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'drf_yasg',
     'drf_spectacular',
     # Add your app
     'apps.roadmap_agent',
@@ -59,7 +58,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'careermate.urls'
+ROOT_URLCONF = 'Careermate.urls'
 
 TEMPLATES = [
     {
@@ -77,7 +76,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'careermate.wsgi.application'
+WSGI_APPLICATION = 'Careermate.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -101,3 +100,4 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://redis:6379/0')
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = os.environ["CELERY_TASK_TIME_LIMIT"]  # 30 minutes
+

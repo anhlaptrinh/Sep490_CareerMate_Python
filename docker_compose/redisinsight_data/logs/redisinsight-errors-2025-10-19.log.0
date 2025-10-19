@@ -1,0 +1,89 @@
+10/19/2025, 2:43:44 PM | ERROR | KeytarEncryptionStrategy | Failed to initialize keytar module | {
+  error: {
+    type: 'Error',
+    message: 'Error loading shared library libsecret-1.so.0: No such file or directory (needed by /usr/src/app/redisinsight/api/node_modules/keytar/build/Release/keytar.node)',
+    stack: undefined,
+    cause: undefined
+  },
+  data: undefined
+}
+10/19/2025, 2:43:52 PM | ERROR | PluginService | Error when trying to process plugin common | {
+  error: undefined,
+  data: [
+    [
+      {
+        target: { main: './index.js', name: 'common', visualizations: [] },
+        value: '[Circular]',
+        property: 'visualizations',
+        children: [],
+        constraints: { arrayNotEmpty: 'visualizations should not be empty' }
+      }
+    ]
+  ]
+}
+10/19/2025, 2:43:52 PM | ERROR | DatabaseService | Database with a4b70155-cf3a-46f1-91dc-6ef35ec77fbe was not Found | {
+  error: undefined,
+  sessionMetadata: {
+    data: { data: {} },
+    userId: '1',
+    sessionId: '1',
+    correlationId: '348e9fc0-88eb-410e-9c66-41042433a819'
+  },
+  data: undefined
+}
+10/19/2025, 2:43:52 PM | ERROR | DatabaseService | Database with a4b70155-cf3a-46f1-91dc-6ef35ec77fbe was not Found | {
+  error: undefined,
+  data: [
+    {
+      data: { data: {} },
+      userId: '1',
+      sessionId: '1',
+      correlationId: '5328a026-1f97-4c24-8293-185988ecfe7a'
+    }
+  ]
+}
+10/19/2025, 2:43:52 PM | ERROR | DatabaseService | Database with a4b70155-cf3a-46f1-91dc-6ef35ec77fbe was not Found | {
+  error: undefined,
+  data: [
+    {
+      data: { data: {} },
+      userId: '1',
+      sessionId: '1',
+      correlationId: 'f1ea62be-705e-44c4-b4ed-8a11ae91de90'
+    }
+  ]
+}
+10/19/2025, 2:43:52 PM | ERROR | LocalDatabaseSettingsRepository | Database settings item with id:a4b70155-cf3a-46f1-91dc-6ef35ec77fbe was not Found | {
+  error: undefined,
+  sessionMetadata: {
+    data: { data: {} },
+    userId: '1',
+    sessionId: '1',
+    correlationId: 'c0975967-6e82-4993-8744-9cbefd3db55f'
+  },
+  data: undefined
+}
+10/19/2025, 2:44:07 PM | ERROR | PluginService | Error when trying to process plugin common | {
+  error: undefined,
+  data: [
+    [
+      {
+        target: { main: './index.js', name: 'common', visualizations: [] },
+        value: '[Circular]',
+        property: 'visualizations',
+        children: [],
+        constraints: { arrayNotEmpty: 'visualizations should not be empty' }
+      }
+    ]
+  ]
+}
+10/19/2025, 2:44:07 PM | ERROR | LocalDatabaseSettingsRepository | Database settings item with id:fd0b3bbb-4052-4972-b849-36f1e854038d was not Found | {
+  error: undefined,
+  sessionMetadata: {
+    data: { data: {} },
+    userId: '1',
+    sessionId: '1',
+    correlationId: 'fa8b0985-4719-48e5-aa97-5db7235df19d'
+  },
+  data: undefined
+}
