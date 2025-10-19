@@ -61,7 +61,7 @@ def analyze_resume_text(text: str,give_feedback:bool) -> dict:
         raise ValueError(f"Resume text too short ({len(text)} chars). May not contain valid resume content.")
 
     # Use cached model for better performance
-    model = get_cached_model(temperature=0)
+    model = get_cached_model(temperature=0.4)
 
     # Streamlined prompt - system instruction + user content
     if give_feedback:
