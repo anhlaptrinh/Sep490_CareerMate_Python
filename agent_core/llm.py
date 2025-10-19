@@ -15,17 +15,15 @@ if not google_api_key:
 
 @lru_cache(maxsize=4)
 def get_model(
-    temperature: float = 0.2,
-    top_p: float = 0.95,
+    temperature: float = 0,
+    top_p: float = 1.0,
 ):
     """
     Create a cached, configured ChatGoogleGenerativeAI model.
 
     Params:
         temperature: randomness (0 = deterministic, 1 = creative)
-        top_p: nucleus sampling (0.95 recommended for balance)
-        system_instruction: optional role / behavior context
-        json_output: if True, request JSON output format
+        top_p: nucleus sampling (controls diversity)
 
     Returns:
         Cached LLM instance for better performance
@@ -39,3 +37,4 @@ def get_model(
     )
 
     return llm
+

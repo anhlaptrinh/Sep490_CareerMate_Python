@@ -2,14 +2,17 @@
 import json
 import re
 from functools import lru_cache
+
+from traits.trait_types import false
+
 from agent_core.llm import get_model
-from agent_core.prompts import extract_resume_prompts, feedback_prompts
+from agent_core.prompts import extract_resume_prompts
 from apps.cv_analysis_agent.services.extract_text import extract_text
 
 
 # Cache model instances to avoid recreation overhead
 @lru_cache(maxsize=2)
-def get_cached_model(temperature: float, json_output: bool = True):
+def get_cached_model(temperature: float):
     """Cache model instances for reuse"""
     return get_model(temperature=temperature)
 
@@ -21,6 +24,11 @@ def extract_json_from_response(response: str) -> str:
 
     response = response.strip()
 
+    # Try to find JSON in markdown code blocks first (most common case)
+    json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response, re.DOTALL)
+    if json_match:
+        return json_match.group(1).strip()
+
     # Fast path: check if it's already valid JSON
     if response.startswith('{') and response.endswith('}'):
         try:
@@ -29,20 +37,20 @@ def extract_json_from_response(response: str) -> str:
         except json.JSONDecodeError:
             pass
 
-    # Try to find JSON in markdown code blocks (non-greedy, more efficient)
-    json_match = re.search(r'```(?:json)?\s*(\{[\s\S]+?\})\s*```', response)
-    if json_match:
-        return json_match.group(1).strip()
-
     # Try to find JSON object directly (first occurrence)
-    json_match = re.search(r'\{[\s\S]+\}', response)
+    json_match = re.search(r'\{.*\}', response, re.DOTALL)
     if json_match:
-        return json_match.group(0).strip()
+        potential_json = json_match.group(0).strip()
+        try:
+            json.loads(potential_json)
+            return potential_json
+        except json.JSONDecodeError:
+            pass
 
     raise ValueError(f"No valid JSON found in response: {response[:200]}")
 
 
-def analyze_resume_text(text: str) -> dict:
+def analyze_resume_text(text: str,give_feedback:bool) -> dict:
     """Extract structured data from resume text"""
     # Validate input text
     if not text or not text.strip():
@@ -53,16 +61,27 @@ def analyze_resume_text(text: str) -> dict:
         raise ValueError(f"Resume text too short ({len(text)} chars). May not contain valid resume content.")
 
     # Use cached model for better performance
-    model = get_cached_model(temperature=0.2, json_output=True)
+    model = get_cached_model(temperature=0)
 
     # Streamlined prompt - system instruction + user content
-    full_prompt = f"""{extract_resume_prompts.SYSTEM_PROMPT}
+    if give_feedback:
+        full_prompt = f"""{extract_resume_prompts.SYSTEM_PROMPT_RESUME_ANALYSIS}
 
-Extract fields from this resume:
+        Extract fields from this resume:
+        
+        {text}
+        
+        Analyze this resume and provide feedback:
+        
+        Return ONLY valid JSON with strength, weakness, suggest, and overall_score (0-100)."""
+    else:
+        full_prompt = f"""{extract_resume_prompts.SYSTEM_PROMPT}
 
-{text}
-
-Return ONLY valid JSON, no markdown."""
+        Extract fields from this resume:
+        
+        {text}
+        
+        Return ONLY valid JSON."""
 
     response = model.invoke(full_prompt)
 
@@ -72,7 +91,7 @@ Return ONLY valid JSON, no markdown."""
     # Debug: Check if response is empty
     if not response_text:
         raise ValueError("Model returned None or empty string. Check API key and model configuration.")
-
+    # return response_text
     try:
         json_str = extract_json_from_response(response_text)
         parsed = json.loads(json_str)
@@ -81,59 +100,34 @@ Return ONLY valid JSON, no markdown."""
         raise ValueError(f"Invalid JSON response from model. Response preview: {response_text[:500]}") from e
 
 
-def generate_feedback(resume_json: dict) -> dict:
-    """Generate feedback based on structured resume data"""
-    if not resume_json:
-        raise ValueError("Cannot generate feedback for empty resume data")
-
-    # Use cached model with higher temperature for creative feedback
-    model = get_cached_model(temperature=0.7, json_output=True)
-
-    # Create concise prompt
-    full_prompt = f"""{feedback_prompts.SYSTEM_PROMPT}
-
-Analyze this resume and provide feedback:
-
-{json.dumps(resume_json, indent=2)}
-
-Return ONLY valid JSON with strength, weakness, suggest, and overall_score (0-10)."""
-
-    response = model.invoke(full_prompt)
-
-    # Extract response content
-    response_text = response.content if hasattr(response, 'content') else str(response)
-
-    if not response_text:
-        raise ValueError("Model returned empty feedback response")
-
-    try:
-        json_str = extract_json_from_response(response_text)
-        feedback_data = json.loads(json_str)
-
-        # Ensure overall_score is present and valid
-        if 'overall_score' not in feedback_data:
-            feedback_data['overall_score'] = 70  # Default score
-
-        return feedback_data
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in feedback response: {response_text[:500]}") from e
 
 
-def analyze_resume_sync(file) -> dict:
+def analyze_resume_sync(file,give_feedback:bool) -> dict:
     """
     Synchronously analyze a resume file.
     Returns structured data and feedback.
     """
     # Step 1: Extract text from PDF
     text = extract_text(file)
-
+    result = ""
     # Step 2: Extract structured information
-    structured = analyze_resume_text(text)
-
-    # Step 3: Generate feedback
-    feedback = generate_feedback(structured)
-
+    structured = analyze_resume_text(text,give_feedback)
+    print("feedback data:", type(structured))
+    if give_feedback:
+        result = "feedback"
+    else:
+        result = "structured_resume"
     return {
-        "structured_resume": structured,
-        "feedback": feedback
+        result: structured,
     }
+
+
+
+
+
+import hashlib
+
+def get_user_seed(user_id: str, base_seed: int = 1234) -> int:
+    # Sinh seed ổn định từ user_id
+    user_hash = int(hashlib.sha256(user_id.encode()).hexdigest(), 16)
+    return (user_hash + base_seed) % (2**31)

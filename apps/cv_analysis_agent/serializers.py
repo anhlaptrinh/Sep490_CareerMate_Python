@@ -6,6 +6,7 @@ class ResumeUploadSerializer(serializers.Serializer):
         required=True,
         help_text="PDF file containing the resume to analyze"
     )
+    give_feedback = serializers.BooleanField(default=False)
 
     def validate_file(self, value):
         """Validate that the uploaded file is a PDF"""
