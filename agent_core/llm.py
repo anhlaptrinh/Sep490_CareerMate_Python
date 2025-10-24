@@ -34,6 +34,8 @@ def get_model(
         api_key=google_api_key,
         temperature=temperature,
         top_p=top_p,
+        max_tokens= 1024,
+        timeout=15,
     )
 
     return llm
