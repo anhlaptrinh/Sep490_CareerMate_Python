@@ -11,11 +11,6 @@ class JobFeedback(models.Model):
     class FeedbackType(models.TextChoices):
         APPLY = 'apply', 'Apply'
         LIKE = 'like', 'Like'
-    job_feedback_id = models.AutoField(primary_key=True)
-    #feedback_type_choices = [
-    #    ('dislike', 'Dislike'),
-    #    ('like', 'Like'),
-    #    ('apply', 'Apply'),]
 
     feedback_type = models.CharField(max_length=10, choices=FeedbackType.choices, default=FeedbackType.APPLY)
     score = models.FloatField(null=True, blank=True)
@@ -35,6 +30,7 @@ class JobFeedback(models.Model):
 
     class Meta:
         db_table = 'job_feedback'
+        managed = False  # Database table already exists
         unique_together = ('candidate', 'job', 'feedback_type')
         indexes = [
             models.Index(fields=['candidate']),
@@ -43,4 +39,4 @@ class JobFeedback(models.Model):
         ]
 
     def __str__(self):
-        return f"Feedback #{self.job_feedback_id} - {self.candidate.fullname} → {self.job.title}"
+        return f"Feedback #{self.id} - Candidate {self.candidate_id} → Job {self.job_id}"

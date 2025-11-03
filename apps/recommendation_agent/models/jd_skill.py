@@ -6,7 +6,7 @@ class JDSkill(models.Model):
     name = models.CharField(max_length=255)
 
     class Meta:
-        db_table = 'jd_skills'
+        db_table = 'jd_skill'
         managed = False
 
     def __str__(self):

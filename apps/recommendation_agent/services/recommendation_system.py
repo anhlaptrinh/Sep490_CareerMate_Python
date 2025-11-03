@@ -1,24 +1,18 @@
-import asyncio
+import os
+import sys
 
-import joblib
+import django
 import numpy as np
 import pandas as pd
-import os
-import django
-import sys
-from sqlalchemy import create_engine
 from asgiref.sync import sync_to_async
-
 from dotenv import load_dotenv
 from google import genai
-from surprise import Reader, Dataset, SVD, accuracy
-from surprise.model_selection import train_test_split
+from sqlalchemy import create_engine
 
-from apps.recommendation_agent.services.weaviate_service import query_weaviate_async, manager
-from apps.recommendation_agent.services.overlap_skill import calculate_skill_overlap
+from apps.recommendation_agent.services.overlap_skill import calculate_skill_overlap_for_job_recommendation
+from apps.recommendation_agent.services.weaviate_service import query_weaviate_async
 
 load_dotenv()
-MODEL_PATH = "cf_model.pkl"
 
 # Setup Django environment FIRST before importing models
 django_base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -28,7 +22,7 @@ django.setup()
 
 # NOW import Django models after setup
 from django.conf import settings
-from apps.recommendation_agent.models import Candidate, JobPostings
+from apps.recommendation_agent.models import JobPostings
 
 # Create SQLAlchemy engine from Django database settings
 def get_sqlalchemy_engine():
@@ -51,59 +45,6 @@ csv_path = os.path.join(settings.BASE_DIR, 'agent_core', 'data', 'job_postings.c
 data_jp = pd.read_csv(csv_path, encoding='latin-1')
 
 #get data from postgres by candidateId
-def get_candidate_by_id(candidate_id: int, resume_id: int | None = None) -> dict | None:
-    """
-    Get candidate by ID with their title and skills from resume(s).
-
-    Args:
-        candidate_id: The ID of the candidate
-        resume_id: Optional - If provided, only return this specific resume. If None, return all resumes.
-
-    Returns:
-        Dictionary with candidate title and skills from specified resume(s), or None if not found
-    """
-    try:
-        candidate = (
-            Candidate.objects
-            .select_related('account')
-            .prefetch_related('resumes__skills')
-            .get(candidate_id=candidate_id)
-        )
-
-        resumes_data = []
-        # The 'resumes' relationship exists via Resume model's related_name='resumes'
-        # IDE may show warning because Candidate has managed=False, but it works at runtime
-        all_resumes = candidate.resumes.all().order_by('-created_at')  # type: ignore
-
-        # If resume_id is provided, filter to get only that specific resume
-        if resume_id is not None:
-            all_resumes = all_resumes.filter(resume_id=resume_id)
-            if not all_resumes.exists():
-                return None  # Resume not found for this candidate
-
-        for resume in all_resumes:
-            skills = []
-            for skill in resume.skills.all():
-                skills.append({
-                    "skill_id": skill.skill_id,
-                    "skill_name": skill.skill_name,
-                    "yearOfExperience": skill.year_of_experience or 0
-                })
-
-            resumes_data.append({
-                "title": candidate.title or "",
-                "resume_id": resume.resume_id,
-                "skills": skills,
-                "skills_count": len(skills)
-            })
-
-        return {
-            "candidate_id": candidate.candidate_id,
-            "title": candidate.title or "",
-            "resumes": resumes_data,
-        }
-    except Candidate.DoesNotExist:
-        return None
 
 #init weaviate
 # Initialize Gemini client
@@ -125,9 +66,19 @@ def get_gemini_embedding(text: str):
 
 
 #Content-Based Recommendation with Skill Overlap Weighting
-async def get_content_based_recommendations(query_item, top_n=5, weights=None, skill_weight=0.4):
+async def get_content_based_recommendations(query_item, top_n=5, weights=None, skill_weight=0.3, min_threshold=0.15):
+    """
+    Content-based recommendation with balanced scoring
+    Args:
+        query_item: Dict with skills, title, description
+        top_n: Number of recommendations to return
+        weights: Field weights for embedding (skills, title, description)
+        skill_weight: Weight for skill overlap (default 0.3 - reduced to prioritize semantic)
+        min_threshold: Minimum similarity score to include (default 0.15)
+    """
     if weights is None:
-        weights = {"skills": 0.5, "title": 0.3, "description": 0.15}
+        # Increase title weight to capture context like "Machine Learning"
+        weights = {"skills": 0.4, "title": 0.4, "description": 0.2}
 
     # 1️⃣ Combine all fields into weighted text
     def to_text(v):
@@ -140,28 +91,29 @@ async def get_content_based_recommendations(query_item, top_n=5, weights=None, s
     title_text = to_text(query_item.get("title", ""))
     description_text = to_text(query_item.get("description", ""))
 
-    # Combine with weights by repeating (simple but effective approach)
+    # Combine with weights - TITLE is now more important for context
     combined_parts = []
     if skills_text:
-        combined_parts.extend([skills_text] * int(weights.get("skills", 0.5) * 10))  # High weight for skills
+        combined_parts.extend([skills_text] * int(weights.get("skills", 0.4) * 10))
     if title_text:
-        combined_parts.extend([title_text] * int(weights.get("title", 0.3) * 10))  # Medium weight for title
+        combined_parts.extend([title_text] * int(weights.get("title", 0.4) * 10))
     if description_text:
-        combined_parts.extend([description_text] * int(weights.get("description", 0.15) * 10))
+        combined_parts.extend([description_text] * int(weights.get("description", 0.2) * 10))
 
     combined_text = " ".join(combined_parts)
 
     # 2️⃣ Create single embedding
-    # embedding = model.encode(combined_text, normalize_embeddings=True)
-    # vector = embedding.tolist()
     vector = get_gemini_embedding(combined_text)
-    # 3️⃣ Query Weaviate with single vector (get more results for better filtering)
-    results = await query_weaviate_async(vector, limit=top_n * 3)  # Get 3x more for skill filtering
 
-    # 4️⃣ Calculate hybrid scores combining semantic similarity + skill overlap
+    # 3️⃣ Query Weaviate with more results for filtering
+    results = await query_weaviate_async(vector, limit=top_n * 5)  # Get 5x more for filtering
+
+    # 4️⃣ Calculate hybrid scores with balanced approach
     query_skills = query_item.get("skills", [])
     if isinstance(query_skills, str):
         query_skills = [s.strip() for s in query_skills.split(",")]
+
+    query_title = query_item.get("title", "").lower()
 
     formatted_results = []
     for job in results:
@@ -176,19 +128,41 @@ async def get_content_based_recommendations(query_item, top_n=5, weights=None, s
         semantic_similarity = 1 - job["distance"]
 
         # Calculate skill overlap score
-        skill_overlap_score = calculate_skill_overlap(query_skills, job_skills)
+        skill_overlap_score = calculate_skill_overlap_for_job_recommendation(query_skills, job_skills)
 
-        # Hybrid score: weighted combination
-        hybrid_score = (1 - skill_weight) * semantic_similarity + skill_weight * skill_overlap_score
+        # 🔥 Title context boost - if query title matches job title/description
+        title_context_boost = 0.0
+        if query_title:
+            job_title_lower = job["title"].lower()
+            job_desc_lower = job.get("description", "").lower()
 
-        formatted_results.append({
-            "job_id": job["job_id"],
-            "title": job["title"],
-            "skills": job["skills"],
-            "description": job.get("description", ""),
-            "semantic_similarity": semantic_similarity,
-            "similarity": hybrid_score  # For backward compatibility
-        })
+            # Check for key terms from query title in job
+            query_title_terms = set(query_title.split())
+            job_title_terms = set(job_title_lower.split())
+
+            # Boost if there's overlap in title terms
+            common_title_terms = query_title_terms.intersection(job_title_terms)
+            if common_title_terms:
+                title_context_boost = 0.1 * len(common_title_terms)  # 10% per common term
+                title_context_boost = min(title_context_boost, 0.2)  # Cap at 20%
+
+        # 🎯 BALANCED hybrid score: semantic > skill overlap
+        # Semantic similarity is PRIMARY (70%), skill overlap is SECONDARY (30%)
+        base_score = (1 - skill_weight) * semantic_similarity + skill_weight * skill_overlap_score
+        hybrid_score = base_score + title_context_boost
+
+        # ⚠️ Only include jobs above minimum threshold
+        if hybrid_score >= min_threshold:
+            formatted_results.append({
+                "job_id": job["job_id"],
+                "title": job["title"],
+                "skills": job["skills"],
+                "description": job.get("description", ""),
+                "semantic_similarity": round(semantic_similarity, 4),
+                "skill_overlap": round(skill_overlap_score, 4),
+                "title_boost": round(title_context_boost, 4),
+                "similarity": round(hybrid_score, 4)
+            })
 
     # 5️⃣ Sort by hybrid score and return top N
     formatted_results.sort(key=lambda x: x["similarity"], reverse=True)
@@ -198,35 +172,155 @@ async def get_content_based_recommendations(query_item, top_n=5, weights=None, s
 
 #Collaborative Filtering Recommendation can be added here similarly
 def _collaborative_filtering_sync(candidate_id, job_ids, n=5):
-    """Dự đoán top job cho candidate dựa vào model CF (SVD) với thông tin chi tiết"""
-    if not os.path.exists(MODEL_PATH):
-        print("⚠️ CF model not found, returning empty results.")
+    """
+    Improved User-Based Collaborative Filtering with Feedback Weighting
+    - Calculates user similarity based on common interactions
+    - Weights feedback by type: apply (1.0) > like (0.7)
+    - Uses actual score values when available
+    - Provides meaningful scores based on similarity weights
+    """
+    from apps.recommendation_agent.models import JobFeedback
+    from collections import defaultdict
+
+    print(f"\n🔍 CF Recommendation for Candidate {candidate_id}")
+
+    # Define feedback weights (apply is stronger signal than like)
+    FEEDBACK_WEIGHTS = {
+        'apply': 1.0,   # Strongest signal - user actually applied
+        'like': 0.7,    # Medium signal - user saved/liked
+    }
+
+    # 1. Build user-job interaction matrix with weighted scores
+    all_feedbacks = JobFeedback.objects.all()
+    user_jobs = defaultdict(set)  # user_id -> set of job_ids
+    job_users = defaultdict(dict)  # job_id -> {user_id: weighted_score}
+    user_job_weights = defaultdict(dict)  # user_id -> {job_id: weighted_score}
+
+    for fb in all_feedbacks:
+        # Calculate weighted score based on feedback type
+        feedback_weight = FEEDBACK_WEIGHTS.get(fb.feedback_type, 0.5)
+
+        # If score exists, use it; otherwise use feedback_weight
+        if fb.score is not None and fb.score > 0:
+            weighted_score = fb.score * feedback_weight
+        else:
+            weighted_score = feedback_weight
+
+        user_jobs[fb.candidate_id].add(fb.job_id)
+        job_users[fb.job_id][fb.candidate_id] = weighted_score
+        user_job_weights[fb.candidate_id][fb.job_id] = weighted_score
+
+    # 2. Get target user's interactions
+    target_user_jobs = user_jobs.get(candidate_id, set())
+
+    if not target_user_jobs:
+        print(f"  ⚠️  Candidate {candidate_id} has no interaction history")
         return []
 
-    model = joblib.load(MODEL_PATH)
+    print(f"  Target user interacted with {len(target_user_jobs)} jobs: {sorted(target_user_jobs)}")
 
-    # Predict scores for all jobs
-    predictions = [(job_id, model.predict(candidate_id, job_id).est) for job_id in job_ids]
-    predictions = sorted(predictions, key=lambda x: x[1], reverse=True)[:n]
+    # 3. Calculate weighted Jaccard similarity with other users
+    user_similarities = {}
+    for other_user_id, other_user_jobs in user_jobs.items():
+        if other_user_id == candidate_id:
+            continue
 
-    # Get detailed job information from database
-    predicted_job_ids = [job_id for job_id, _ in predictions]
+        # Find common jobs
+        common_jobs = target_user_jobs.intersection(other_user_jobs)
+
+        if not common_jobs:
+            continue
+
+        # Calculate weighted similarity
+        # Sum of min weights for common jobs / Sum of max weights for all jobs
+        common_weight_sum = 0.0
+        for job_id in common_jobs:
+            target_weight = user_job_weights[candidate_id].get(job_id, 0.5)
+            other_weight = user_job_weights[other_user_id].get(job_id, 0.5)
+            common_weight_sum += min(target_weight, other_weight)
+
+        # Calculate union and max weights
+        all_jobs = target_user_jobs.union(other_user_jobs)
+        all_weight_sum = 0.0
+        for job_id in all_jobs:
+            target_weight = user_job_weights[candidate_id].get(job_id, 0.0)
+            other_weight = user_job_weights[other_user_id].get(job_id, 0.0)
+            all_weight_sum += max(target_weight, other_weight)
+
+        if all_weight_sum > 0:
+            similarity = common_weight_sum / all_weight_sum
+            user_similarities[other_user_id] = similarity
+            print(f"  Similarity with User {other_user_id}: {similarity:.4f} (common: {sorted(common_jobs)}, weighted)")
+
+    if not user_similarities:
+        print(f"  ⚠️  No similar users found")
+        return []
+
+    # 4. Filter candidate jobs (not yet interacted)
+    candidate_jobs = [job_id for job_id in job_ids if job_id not in target_user_jobs]
+
+    if not candidate_jobs:
+        print(f"  ⚠️  User has interacted with all available jobs")
+        return []
+
+    print(f"  Candidate jobs (not interacted): {len(candidate_jobs)}")
+
+    # 5. Calculate weighted score for each candidate job
+    job_scores = {}
+    job_supporters = {}  # Track which users liked each job and their weights
+
+    for job_id in candidate_jobs:
+        score = 0.0
+        supporters = []
+
+        # Check which similar users liked this job
+        users_with_weights = job_users.get(job_id, {})
+
+        for user_id, job_weight in users_with_weights.items():
+            if user_id in user_similarities:
+                # Weight by BOTH user similarity AND feedback strength
+                contribution = user_similarities[user_id] * job_weight
+                score += contribution
+                supporters.append((user_id, job_weight))
+
+        if score > 0:
+            job_scores[job_id] = score
+            job_supporters[job_id] = supporters
+
+    # 6. Sort by score
+    sorted_jobs = sorted(job_scores.items(), key=lambda x: x[1], reverse=True)[:n]
+
+    if not sorted_jobs:
+        print(f"  ⚠️  No recommendations found")
+        return []
+
+    print(f"  Top {len(sorted_jobs)} recommendations:")
+    for job_id, score in sorted_jobs:
+        supporters = job_supporters.get(job_id, [])
+        supporters_info = ', '.join([f"User {uid} (weight={w:.2f})" for uid, w in supporters])
+        print(f"    Job {job_id}: score={score:.4f} (liked by: {supporters_info})")
+
+    # 7. Get job details from database
+    predicted_job_ids = [job_id for job_id, _ in sorted_jobs]
     jobs = JobPostings.objects.filter(id__in=predicted_job_ids).values(
         'id', 'title', 'description', 'address'
     )
 
-    # Create a mapping of job_id to job details
     job_details_map = {job['id']: job for job in jobs}
 
-    # Combine predictions with job details
+    # 8. Normalize scores to 0-1 range and format results
+    max_raw_score = sorted_jobs[0][1] if sorted_jobs else 1.0
+
     detailed_results = []
-    for job_id, score in predictions:
+    for job_id, raw_score in sorted_jobs:
         job_info = job_details_map.get(job_id, {})
 
-        # Get skills from Weaviate or CSV (if available)
+        # Normalize score (scale to 0-1 based on max score in this result set)
+        normalized_score = raw_score / max_raw_score if max_raw_score > 0 else 0
+
+        # Get skills from CSV data
         skills = "N/A"
         try:
-            # Try to get from data_jp CSV
             job_row = data_jp[data_jp['id'] == job_id]
             if not job_row.empty:
                 skills = job_row.iloc[0].get('skills', 'N/A')
@@ -236,10 +330,10 @@ def _collaborative_filtering_sync(candidate_id, job_ids, n=5):
         detailed_results.append({
             "job_id": job_id,
             "title": job_info.get('title', 'Unknown'),
-            "description": job_info.get('description', ''),
-            "address": job_info.get('address', ''),
+            "description": job_info.get('description', '')[:200] + '...' if job_info.get('description', '') else '',
             "skills": skills,
-            "cf_score": round(score, 4)
+            "similarity": round(normalized_score, 4),
+            "raw_cf_score": round(raw_score, 4)  # Include raw score for debugging
         })
 
     return detailed_results
@@ -259,8 +353,8 @@ async def get_hybrid_job_recommendations(candidate_id: int, query_item: dict, jo
     # 2️⃣ Try Collaborative Filtering (fallback to None if data too small)
     try:
         cf_results = await get_collaborative_filtering_recommendations(candidate_id, job_ids, model=None, n=top_n * 2)
-        # CF results now return detailed dictionaries with job info
-        cf_scores = {job["job_id"]: job["cf_score"] for job in cf_results}
+        # CF results now return detailed dictionaries with job info (using 'similarity' key)
+        cf_scores = {job["job_id"]: job["similarity"] for job in cf_results}
         has_cf_data = True
     except Exception as e:
         print(f"[⚠️ CF skipped: {e}]")
@@ -294,7 +388,7 @@ async def get_hybrid_job_recommendations(candidate_id: int, query_item: dict, jo
 
     return  {
         "content_based": content_results[:top_n],
-        "collaborative": cf_results[:top_n],  # Now returns detailed job info
+        "collaborative": cf_results[:top_n],  # Now returns detailed job info with title, description, skills
         "hybrid_top": hybrid_ranked
     }
 
@@ -325,55 +419,3 @@ async def query_all_jobs_async():
     Async wrapper for query_all_jobs
     """
     return await sync_to_async(_query_all_jobs_sync)()
-
-
-# if __name__ == "__main__":
-#     import json
-#
-#     print("🚀 Starting Content-Based Recommendation Test (with Skill Overlap Weighting)...")
-#     print("=" * 80)
-#
-#     query_item = {
-#         "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "AWS"],
-#         "title": "Back-end developer",
-#         "description": "We are looking for a skilled Back-end developer with experience in "
-#                        "Python and FastAPI to join our dynamic team. The ideal"
-#                        " candidate will have a strong background in building "
-#                        "scalable web applications and working with cloud services like AWS. "
-#                        "Familiarity with PostgreSQL and containerization using Docker is a must."
-#     }
-#
-#     print("\n📋 Query Item:")
-#     print(json.dumps(query_item, indent=2, ensure_ascii=False))
-#     print("\n" + "=" * 80)
-#
-#     try:
-#         print("\n🔍 Searching for similar jobs (Hybrid: Semantic + Skill Overlap)...")
-#         recs = asyncio.run(get_content_based_recommendations(query_item, top_n=5, skill_weight=0.4))
-#
-#         if not recs:
-#             print("\n❌ No recommendations found. The JobPosting collection might be empty.")
-#         else:
-#             print(f"\n✅ Found {len(recs)} recommendations:\n")
-#             for idx, r in enumerate(recs, 1):
-#                 print(f"\n{'='*80}")
-#                 print(f"#{idx} - {r['title']}")
-#                 print(f"{'='*80}")
-#                 print(f"🆔 Job ID: {r['job_id']}")
-#                 print(f"🧠 Skills: {r['skills']}")
-#                 print(f"📊 Scores:")
-#                 print(f"   • Semantic Similarity: {r['semantic_similarity']:.3f}")
-#                 print(f"   • Similarity: {r['similarity']:.3f} (Overall)")
-#                 print(f"📝 Description: {r['description'][:150]}...")
-#
-#     except Exception as e:
-#         print(f"\n❌ Error occurred: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#
-#     finally:
-#         # Close the Weaviate connection properly
-#         print("\n" + "=" * 80)
-#         print("🧹 Closing connections...")
-#         manager.close()
-#         print("✅ Done!")

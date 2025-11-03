@@ -12,7 +12,7 @@ class JobDescription(models.Model):
     experience_year = models.IntegerField(blank=True, null=True)
 
     class Meta:
-        db_table = 'job_descriptions'
+        db_table = 'job_description'
         managed = False
 
     def __str__(self):
