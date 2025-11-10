@@ -48,7 +48,15 @@ class JobPostingView(APIView):
             candidate_id = validated_data.get("candidate_id")
             top_n = validated_data.get("top_n", 5)
 
-            # 2️⃣ Build query_item from request data (skills, title, description)
+            # 2️⃣ Validate candidate exists in database
+            if not Candidate.objects.filter(candidate_id=candidate_id).exists():
+                return Response({
+                    "ok": False,
+                    "error": f"Candidate with ID {candidate_id} does not exist in database",
+                    "candidate_id": candidate_id
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # 3️⃣ Build query_item from request data (skills, title, description)
             query_item = {}
 
             # Add skills if provided
@@ -65,50 +73,37 @@ class JobPostingView(APIView):
 
             # If no query parameters provided, try to fetch from candidate's profile
             if not query_item:
-                try:
-                    # Fetch candidate data from database
-                    candidate = Candidate.objects.select_related('account').prefetch_related(
-                        Prefetch('resumes', queryset=Resume.objects.prefetch_related('skills'))
-                    ).filter(candidate_id=candidate_id).first()
+                # Fetch candidate data from database
+                candidate = Candidate.objects.select_related('account').prefetch_related(
+                    Prefetch('resumes', queryset=Resume.objects.prefetch_related('skills'))
+                ).filter(candidate_id=candidate_id).first()
 
-                    if not candidate:
-                        return Response({
-                            "error": "Candidate not found",
-                            "candidate_id": candidate_id
-                        }, status=status.HTTP_404_NOT_FOUND)
+                # Build query_item from candidate's resume
+                if candidate.title:
+                    query_item["title"] = candidate.title
 
-                    # Build query_item from candidate's resume
-                    if candidate.title:
-                        query_item["title"] = candidate.title
+                # Get skills from latest resume
+                resumes = list(candidate.resumes.all())
+                if resumes:
+                    latest_resume = resumes[0]
+                    skills = [skill.skill_name for skill in latest_resume.skills.all()]
+                    if skills:
+                        query_item["skills"] = skills
+                    if latest_resume.about_me:
+                        query_item["description"] = latest_resume.about_me
 
-                    # Get skills from latest resume
-                    resumes = list(candidate.resumes.all())
-                    if resumes:
-                        latest_resume = resumes[0]
-                        skills = [skill.skill_name for skill in latest_resume.skills.all()]
-                        if skills:
-                            query_item["skills"] = skills
-                        if latest_resume.about_me:
-                            query_item["description"] = latest_resume.about_me
-
-                    # If still no query_item data, return error
-                    if not query_item:
-                        return Response({
-                            "error": "No query parameters provided and candidate has no resume data",
-                            "candidate_id": candidate_id
-                        }, status=status.HTTP_400_BAD_REQUEST)
-
-                except Exception as e:
+                # If still no query_item data, return error
+                if not query_item:
                     return Response({
-                        "error": "Failed to fetch candidate data",
-                        "candidate_id": candidate_id,
-                        "details": str(e)
-                    }, status=status.HTTP_404_NOT_FOUND)
+                        "ok": False,
+                        "error": "No query parameters provided and candidate has no resume data",
+                        "candidate_id": candidate_id
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-            # 3️⃣ Lấy danh sách job từ DB hoặc Weaviate
+            # 4️⃣ Lấy danh sách job từ DB hoặc Weaviate
             job_ids = [j["job_id"] for j in query_all_jobs()]
 
-            # 4️⃣ Gọi service hybrid with proper async handling
+            # 5️⃣ Gọi service hybrid with proper async handling
             recs = asyncio.run(get_hybrid_job_recommendations(
                 candidate_id=candidate_id,
                 query_item=query_item,
@@ -116,7 +111,7 @@ class JobPostingView(APIView):
                 top_n=top_n
             ))
 
-            # 5️⃣ Trả về response JSON
+            # 6️⃣ Trả về response JSON
             return Response({
                 "ok": True,
                 "results": recs
